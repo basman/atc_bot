@@ -127,10 +127,11 @@ class Airways:
                     continue
                 # must be at altitude 9 if approaching any exit
                 for e in self.arena.exits:
-                    if e.distance(s) < self.COLLISION_RANGE and s.z < 9:
+                    if e.distanceXY(s) < self.COLLISION_RANGE and s.z < 9:
                         continue
                 for a in self.arena.airports:
-                    if a.distance(dest) > 2 and a.distance(s) < self.COLLISION_RANGE and s.z < 3:
+                    # except for our own destination: pass airports at 3000 feet or above
+                    if a.distanceXY(dest) > 2 and a.distanceXY(s) < self.COLLISION_RANGE and s.z < 3:
                         continue
 
 #             collision = False
