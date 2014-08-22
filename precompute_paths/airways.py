@@ -61,9 +61,6 @@ class Airways:
             print self.log
             print "Fatal: could not find a path from " + str(start) + " to " + str(dest)
             exit(1)
-        else:
-            print str(start) + " to " + str(dest) + " (" + str(len(path)) + " steps): ",
-            print string.join(map(str, path), '; ')
         
         # append destination itself, or path would end at approach position
         path.append(dest)
@@ -89,7 +86,9 @@ class Airways:
                 i == 1 and isinstance(start, Exit) and path[i].dir != start.reverseDirection():
                 path[i-1].add_cmd_direction(path[i].dir)
             
-        
+        print str(start) + " to " + str(dest) + " (" + str(len(path)) + " steps): ",
+        print string.join(map(str, path), '; ')
+
         return path
 
     def step_recursive(self, path, p, start, dest):
