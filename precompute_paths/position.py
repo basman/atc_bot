@@ -102,10 +102,12 @@ class Position:
             return True
         
     def distance(self, pos):
-        return math.sqrt( (self.x-pos.x)**2 + (self.y-pos.y)**2 + (self.z-pos.z)**2 )        
+        return max( abs(self.x-pos.x), abs(self.y-pos.y), abs(self.z-pos.z) )
+        #return math.sqrt( (self.x-pos.x)**2 + (self.y-pos.y)**2 + (self.z-pos.z)**2 )        
     
     def distanceXY(self, pos):
-        return math.sqrt( (self.x-pos.x)**2 + (self.y-pos.y)**2 )
+        return max( abs(self.x-pos.x), abs(self.y-pos.y) )
+        #return math.sqrt( (self.x-pos.x)**2 + (self.y-pos.y)**2 )
     
     def reverseDirection(self):
         # compute the opposite direction
