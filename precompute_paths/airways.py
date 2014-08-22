@@ -10,7 +10,7 @@ class Airways:
         self.arena = arena
         self.airways = []
         self.airways_by_ends = {}
-        self.compute_airways()
+        #self.compute_airways()
         self.set_paths(self.arena.airplanes.values())
     
     def compute_airways(self):
