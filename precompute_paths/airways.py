@@ -89,7 +89,6 @@ class Airways:
             if (i > 1 or not isinstance(start, Exit)) and path[i].dir != path[i-1].dir or \
                 i == 1 and isinstance(start, Exit) and path[i].dir != start.reverseDirection():
                 path[i-1].add_cmd_direction(path[i].dir)
-                # FIXME can't deal with tolerant approach direction
                 
         
         return path
