@@ -69,18 +69,17 @@ class Airways:
         path.append(dest)
         
         # compute commands along the path
-        delta_z = path[1].z - ( path[0].z if not isinstance(start, Exit) else 7 ) # climb rate
-        delta_z_idx = -1 if delta_z == 0 else 0 # index where the climb/descent began
+        delta_z = 0 # ascent rate
+        delta_z_idx = -1 # start of ascent rate
                  
         for i in range(1,len(path)):
-            if i > 1 and path[i].z - path[i-1].z != delta_z:
-                # change of climb rate (altitude) detected
-                #   store command for target altitude when it begun
+            if path[i].z - path[i-1].z != delta_z:
                 if delta_z_idx >= 0:
-                    path[delta_z_idx].add_cmd_altitude(path[i].z)
-                #   store new climb rate
+                    path[delta_z_idx].add_cmd_altitude(path[i-1].z)
+                
+                # new delta_z
                 delta_z = path[i].z - path[i-1].z
-                #   store index of previous element
+                
                 if delta_z != 0:
                     delta_z_idx = i-1
                 else:
@@ -89,7 +88,7 @@ class Airways:
             if (i > 1 or not isinstance(start, Exit)) and path[i].dir != path[i-1].dir or \
                 i == 1 and isinstance(start, Exit) and path[i].dir != start.reverseDirection():
                 path[i-1].add_cmd_direction(path[i].dir)
-                
+            
         
         return path
 
