@@ -208,7 +208,7 @@ class Airways:
                         break
                 else:
                     print "Path: " + string.join(map(str, a.path), ',')
-                    raise Exception("airplane not in sync with flight path: " + str(a))
+                    raise Exception("airplane left flight path: " + str(a) + ", expected " + (str(a.path[a.path_idx]) if a.path_idx >= 0 else '[?]'))
         
         for c in commands:
             print "cmd: " + c,
