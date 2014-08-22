@@ -4,7 +4,7 @@ import time
 
 if __name__ == '__main__':
     try:
-        fil = open("/home/rha/projects/atc/test-json/initial.json", 'r')
+        fil = open("/home/rha/projects/atc/test-json/initial2.json", 'r')
         buf = ""
         while True:
             line = fil.readline()
