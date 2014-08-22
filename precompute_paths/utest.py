@@ -48,5 +48,26 @@ class Tests(unittest.TestCase):
 
         self.assertTrue(self.posE1.equals(self.posF1))
 
+        # not the same, the other way round
+        self.assertTrue(self.posB1.equals(self.posA1))
+        self.assertTrue(self.posC1.equals(self.posA1))
+        self.assertFalse(self.posD1.equals(self.posA1))
+        self.assertFalse(self.posE1.equals(self.posA1))
+        self.assertTrue(self.posF1.equals(self.posA1))
+        
+        self.assertTrue(self.posC1.equals(self.posB1))
+        self.assertFalse(self.posD1.equals(self.posB1))
+        self.assertTrue(self.posE1.equals(self.posB1))
+        self.assertTrue(self.posF1.equals(self.posB1))
+        
+        self.assertTrue(self.posD1.equals(self.posC1))
+        self.assertFalse(self.posE1.equals(self.posC1))
+        self.assertFalse(self.posF1.equals(self.posC1))
+
+        self.assertTrue(self.posE1.equals(self.posD1))
+        self.assertFalse(self.posF1.equals(self.posD1))
+
+        self.assertTrue(self.posF1.equals(self.posE1))
+
 if __name__ == '__main__':
     unittest.main()

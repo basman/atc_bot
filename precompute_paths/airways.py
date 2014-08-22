@@ -49,7 +49,6 @@ class Airways:
         tmp = Position(dest)
         tmp.dir = tmp.reverseDirection()
         if isinstance(dest, Airport):
-            # FIXME airport approach takes extra turns
             approach = tmp.step(0, 1)
         else:
             approach = tmp.step(0, 0)

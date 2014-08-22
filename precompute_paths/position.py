@@ -48,7 +48,13 @@ class Position:
         if self.x == pos.x and self.y == pos.y and self.z == pos.z:
             # negative direction value means +-90 degrees tolerance
             if pos.dir_tolerance > 0:
-                if (self.dir - pos.dir + 360) % 360 <= pos.dir_tolerance:
+                if self.dir >= 360 - pos.dir_tolerance and pos.dir <= pos.dir_tolerance:
+                    if 360 - self.dir + pos.dir <= pos.dir_tolerance:
+                        return True
+                elif pos.dir >= 360 - pos.dir_tolerance and self.dir <= pos.dir_tolerance:
+                    if 360 - pos.dir + self.dir <= pos.dir_tolerance:
+                        return True
+                elif abs(self.dir - pos.dir) <= pos.dir_tolerance:
                     return True
             elif self.dir == pos.dir:
                 return True
