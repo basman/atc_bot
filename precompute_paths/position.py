@@ -22,7 +22,7 @@ class Position:
                 self.__init_copy(*args)
             else:
                 raise TypeError("Error: unknown object type given to constructor of Position")
-        elif len(args) == 4:
+        elif len(args) >= 4 and len(args) <= 5:
             self.__init_values(*args)
         else:
             raise TypeError("Error: invalid number of arguments given to constructor of Position")
