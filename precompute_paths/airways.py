@@ -79,6 +79,9 @@ class Airways:
                 
                 if delta_z != 0:
                     delta_z_idx = i-1
+                    # don't forget last step (e.g. landing on airport)
+                    if i == len(path)-1:
+                        path[i-1].add_cmd_altitude(path[i].z)
                 else:
                     delta_z_idx = -1
             
