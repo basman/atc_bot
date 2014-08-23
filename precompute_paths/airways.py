@@ -5,6 +5,7 @@ from position import *
 class Airways:
     # range within collisions of airways are accepted (flightplans need to deal with it by delaying airplanes)
     COLLISION_RANGE = 4
+    COLLISION_PENALTY = 100
     
     def __init__(self, arena):
         self.arena = arena
@@ -134,17 +135,20 @@ class Airways:
                     if a.distanceXY(dest) > 2 and a.distanceXY(s) < self.COLLISION_RANGE and s.z < 3:
                         continue
 
-#             collision = False
-#             for flightp in self.airways:
-#                 if collision:
-#                     break
-#                 for other_s in flightp:
-#                     if s.is_collision(other_s):
-#                         if dest.distance(s) > self.COLLISION_RANGE and start.distance(s) > self.COLLISION_RANGE:
-#                             collision = True
-#                             break
-#             if not collision:
             distance = dest.distance(s)
+
+            collision = False
+            for flightp in self.airways:
+                if collision:
+                    break
+                for other_s in flightp:
+                    if s.is_collision(other_s):
+                        if dest.distance(s) > self.COLLISION_RANGE and start.distance(s) > self.COLLISION_RANGE:
+                            collision = True
+                            break
+            if collision:
+                distance += self.COLLISION_PENALTY # collision penalty
+
             if not distance in possible_steps:
                 possible_steps[distance] = []
             possible_steps[distance].append(s)
