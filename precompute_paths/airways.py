@@ -40,7 +40,8 @@ class Airways:
         #print "looking for a path from " + str(start) + " to " + str(dest) + ", starting at " + str(p)
 
         path = [ Position(start) ]
-        # planes enter at altitude 7
+        
+        # planes enter at altitude 7 and reverse exit direction
         if isinstance(start, Exit):
             path[0].z = 7
             path[0].dir = path[0].reverseDirection()
@@ -52,7 +53,7 @@ class Airways:
             approach = tmp.step(0, 1)
         else:
             approach = tmp.step(0, 0)
-        approach.dir = dest.dir
+        approach.dir = dest.dir # turn around
         approach.dir_tolerance = 90 # allow max. 90 degree derivation from target direction
             
         # enter recursion
