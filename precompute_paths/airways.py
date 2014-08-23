@@ -1,6 +1,7 @@
 import string
 from airplane import Airplane
 from position import *
+import copy
 
 class Airways:
     # range within collisions of airways are accepted (flightplans need to deal with it by delaying airplanes)
@@ -12,6 +13,7 @@ class Airways:
         self.airways = []
         self.airways_by_ends = {}
         #self.compute_airways()
+        self.schedules = {} # nested dict; schedules[airplane_id][time] = position
         self.set_paths(self.arena.airplanes.values())
     
     def compute_airways(self):
@@ -214,12 +216,13 @@ class Airways:
                     commands.append(a.id + c + "\n")
             
             else:
-            # find airways position for each plane, collect commands
+            # find flight path position for each plane, collect commands
                 if a.path is None:
                     raise Exception("airplane has no path: " + str(a))
                 for i in range(a.path_idx if a.path_idx >= 0 else 0, len(a.path)):
                     if a.path[i].equals(a):
                         a.path_idx = i
+                        self.compute_timeref(a)
                         for c in a.path[a.path_idx].cmd:
                             commands.append(a.id + c + "\n")
                         break
@@ -244,4 +247,29 @@ class Airways:
                 if not a.dest in self.airways_by_ends[a.start]:
                     self.airways_by_ends[a.start][a.dest] = self.compute_path(a.start, a.dest)
                 print "Airplane " + str(a) + " uses standard flight path from " + str(a.start) + " to " + str(a.dest)
-                a.path = self.airways_by_ends[a.start][a.dest]
+                # deep copy to allow changes for collision prevention
+                a.path = copy.deepcopy(self.airways_by_ends[a.start][a.dest])
+    
+    def compute_timeref(self, airplane):
+        if airplane in self.schedules:
+            if not self.arena.clock in self.schedules[airplane.id]:
+                raise Exception("Airplane " + str(airplane) + " was not scheduled to exist at time " + str(self.arena.clock))
+            if not airplane.path[airplane.path_idx] is \
+                    self.schedules[airplane.id][self.arena.clock]:
+                print "WARNING: schedule mismatch by airplane " + str(airplane) + " should be " + str(self.schedules[airplane.id][self.arena.clock])
+            return
+        for i in range(airplane.path_idx, len(airplane.path)):
+            for speed_delay in range(airplane.speed):
+                # slow planes need two entries per step
+                step_time = self.arena.clock+(i-airplane.path_idx)*airplane.speed + speed_delay
+                
+                # mark time when airplane will reach that flight path step
+                self.schedules[airplane.id] = {}
+                self.schedules[airplane.id][step_time] = airplane.path[i]
+                # look for collisions with other flight schedules
+                for other_plane_id in self.schedules.keys():
+                    if other_plane_id == airplane.id:
+                        continue
+                    if step_time in self.schedules[other_plane_id]:
+                        if self.schedules[other_plane_id][step_time].is_collision(airplane.path[i]) and airplane.path[i].z > 0:
+                            print "COLLISION t=" + str(step_time) + " between airplane " + airplane.id + " and " + other_plane_id
