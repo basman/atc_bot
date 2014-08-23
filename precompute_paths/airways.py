@@ -115,6 +115,7 @@ class Airways:
         
         # try to walk in any direction (preferrably towards dest)
         for s in steps:
+            skip = False
             if s.equals(dest):
                 # present arrival as only solution
                 possible_steps[0] = [s]
@@ -128,12 +129,21 @@ class Airways:
                     continue
                 # must be at altitude 9 if approaching any exit
                 for e in self.arena.exits:
-                    if e.distanceXY(s) < self.COLLISION_RANGE and s.z < 9:
-                        continue
+                    if e.distanceXY(start) > self.COLLISION_RANGE and \
+                    e.distanceXY(s) < self.COLLISION_RANGE and \
+                    s.z < 9:
+                        skip = True
+                        break
                 for a in self.arena.airports:
                     # except for our own destination: pass airports at 3000 feet or above
-                    if a.distanceXY(dest) > 2 and a.distanceXY(s) < self.COLLISION_RANGE and s.z < 3:
-                        continue
+                    if a.distanceXY(dest) > self.COLLISION_RANGE and \
+                    a.distanceXY(start) > self.COLLISION_RANGE and \
+                    a.distanceXY(s) < self.COLLISION_RANGE and \
+                    s.z < 3:
+                        skip = True
+                        break
+            if skip:
+                continue
 
             distance = dest.distance(s)
 
