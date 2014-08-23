@@ -139,9 +139,19 @@ class Exit(Position):
         return "E" + str(self.id) + self._tostr()
         
 class Airport(Position):
+    
+    LAUNCH_INTERVAL = 5
+    
     def __init__(self, *args):
         Position.__init__(self, *args)
         self.z = 0
+        self.wait_until = -1
+
+    def must_wait(self, clock):
+        if self.wait_until < clock:
+            self.wait_until = clock + self.LAUNCH_INTERVAL
+            return False
+        return True
 
     def __str__(self):
         return "A" + str(self.id)  + self._tostr()

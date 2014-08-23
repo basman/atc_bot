@@ -191,7 +191,7 @@ class Airways:
             # pull up one single airplane per airport
             if a.z == 0:
                 ap = a.start
-                if not ap in waiting:
+                if not ap in waiting and not ap.must_wait(self.arena.clock):
                     waiting[ap] = a
                 
                 path = self.airways_by_ends[a.start][a.dest]
