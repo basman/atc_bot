@@ -105,7 +105,7 @@ class Airways:
         
         # to deal with existing airplanes, maintain direction and altitude for 
         # a while after entering through an exit
-        if not isinstance(start, Airport) and not isinstance(start, Exit) and len(path) <= 2:
+        if not isinstance(start, Airport) and len(path) <= 2:
             steps = [ p.step() ]
         else:
             steps = self.gen_possible_steps(p, start, dest)
