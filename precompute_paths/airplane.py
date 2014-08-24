@@ -13,6 +13,7 @@ class Airplane(Position):
         # 0 means low speed (moves when clock % 2 == 0); 1 means high speed (moves when clock % 1 == 0)
         self.speed = 2 if self.id.istitle() else 1
         self.start = arena.find_start(self)
+        Airplane.MAX_RANGE = arena.width + arena.height
 
     def update(self, json_data):
         self.x = json_data['x']
