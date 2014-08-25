@@ -1,5 +1,5 @@
 from arena import Arena
-from airways import Airways
+from precompute_paths.traffic_controller import Flightpaths
 import time
 
 if __name__ == '__main__':
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     #buf = con.read() # read arena
     arena = Arena(buf)
     mid_time = time.time()
-    airways = Airways(arena)
+    airways = Flightpaths(arena)
     
     stop_time = time.time()
     

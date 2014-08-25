@@ -2,8 +2,9 @@ import string
 from airplane import Airplane
 from position import *
 import copy
+from resolver import *
 
-class Airways:
+class Flightpaths:
     # range within collisions of airways are accepted (flightplans need to deal with it by delaying airplanes)
     COLLISION_RANGE = 4
     COLLISION_PENALTY = 100
@@ -222,7 +223,10 @@ class Airways:
                 for i in range(a.path_idx if a.path_idx >= 0 else 0, len(a.path)):
                     if a.path[i].equals(a):
                         a.path_idx = i
-                        self.compute_timeref(a)
+                        collisions = self.compute_timeref(a)
+                        if not collisions is None and len(collisions) > 0:
+                            if not self.redirect_colliding(collisions):
+                                raise Exception("could not resolve collisions " + str(collisions))
                         for c in a.path[a.path_idx].cmd:
                             commands.append(a.id + c + "\n")
                         break
@@ -251,20 +255,22 @@ class Airways:
                 a.path = copy.deepcopy(self.airways_by_ends[a.start][a.dest])
     
     def compute_timeref(self, airplane):
-        if airplane in self.schedules:
+        if airplane.id in self.schedules:
             if not self.arena.clock in self.schedules[airplane.id]:
                 raise Exception("Airplane " + str(airplane) + " was not scheduled to exist at time " + str(self.arena.clock))
             if not airplane.path[airplane.path_idx] is \
                     self.schedules[airplane.id][self.arena.clock]:
                 print "WARNING: schedule mismatch by airplane " + str(airplane) + " should be " + str(self.schedules[airplane.id][self.arena.clock])
-            return
+            return None
+        
+        self.schedules[airplane.id] = {}
+        collisions = {} # time: { redirected_plane: <airplane>, other_plane_id: <id>, other_pos: <colliding_position>
         for i in range(airplane.path_idx, len(airplane.path)):
             for speed_delay in range(airplane.speed):
                 # slow planes need two entries per step
                 step_time = self.arena.clock+(i-airplane.path_idx)*airplane.speed + speed_delay
                 
                 # mark time when airplane will reach that flight path step
-                self.schedules[airplane.id] = {}
                 self.schedules[airplane.id][step_time] = airplane.path[i]
                 # look for collisions with other flight schedules
                 for other_plane_id in self.schedules.keys():
@@ -272,4 +278,19 @@ class Airways:
                         continue
                     if step_time in self.schedules[other_plane_id]:
                         if self.schedules[other_plane_id][step_time].is_collision(airplane.path[i]) and airplane.path[i].z > 0:
-                            print "COLLISION t=" + str(step_time) + " between airplane " + airplane.id + " and " + other_plane_id
+                            print "COLLISION t=" + str(step_time) + " between airplane " + airplane.id + str(airplane.path[i]) + " and " \
+                            + other_plane_id + str(self.schedules[other_plane_id][step_time])
+                            collisions[step_time] = { 'redirected_plane': airplane, 
+                                                      'other_plane_id': other_plane_id,
+                                                      'other_pos': self.schedules[other_plane_id][step_time]
+                                                      }
+        return collisions
+    
+    def redirect_colliding(self, collisions):
+        # collisions looks like: { time: { redirected_plane: <airplane>, other_plane_id: <id>, other_pos: <colliding_position> }
+        resolvers = ( ResolverDive(), ResolverBruteForce() )
+        for res in resolvers:
+            if res.resolve_collision(self, collisions):
+                return True
+        return False
+    

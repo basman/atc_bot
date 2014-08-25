@@ -1,6 +1,6 @@
 from connector import Connector
 from arena import Arena
-from airways import Airways
+from precompute_paths.traffic_controller import Flightpaths
 import string
 
 if __name__ == '__main__':
@@ -12,7 +12,7 @@ if __name__ == '__main__':
     
     buf = con.read() # read arena
     arena = Arena(buf)
-    airways = Airways(arena)
+    airways = Flightpaths(arena)
     
     while True:
         commands = airways.update()
