@@ -55,7 +55,9 @@ class Scheduler:
             raise Exception("Fatal: could not find a path from " + str(start) + " to " + str(airplane.dest))
         
         # append destination itself
-        plan.append( airplane.dest )
+        d = Position(airplane.dest)
+        d.time = plan[-1].time + 1
+        plan.append( d )
         
         self._compute_commands(plan)
             
@@ -64,9 +66,11 @@ class Scheduler:
 
         # add schedule to database
         for s in plan:
+            if s.time < self.arena.clock:
+                raise Exception("can't schedule for past time " + str(s.time) + ". current time: " + str(self.arena.clock))
             if not s.time in self.schedules:
                 self.schedules[s.time] = {}
-            self.schedules[s.time][airplane.id] = s
+            self.schedules[s.time][airplane] = s
 
 
     def _scheduled_is_collision(self, airplane, p):
@@ -197,10 +201,11 @@ class Scheduler:
             else:
             # check flight path position for each plane, collect commands
                 if not self.arena.clock in self.schedules or not a in self.schedules[self.arena.clock]:
+                    # new airplane already in flight
                     self._compute_path(a)
                 if not a.equals(self.schedules[self.arena.clock][a]):
                     print "Path: " + string.join(map(str, a.path), ',')
-                    raise Exception("airplane left flight path: " + str(a) + ", expected " + (str(a.path[a.path_idx]) if a.path_idx >= 0 else '[?]'))
+                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self.schedules[self.arena.clock][a]))
 
             for c in self.schedules[self.arena.clock][a].cmd:
                 commands.append(a.id + c + "\n")
