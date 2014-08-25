@@ -14,6 +14,7 @@ class Position:
     def __init__(self, *args):
         self.dir_tolerance = 0
         self.cmd = []
+        self.time = -1
         
         if len(args) == 1:
             if isinstance(args[0], dict):
@@ -123,7 +124,10 @@ class Position:
         return self._tostr()
     
     def _tostr(self):
-        s = "[" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ';' + str(self.dir) 
+        s = '['
+        if self.time >= 0:
+            s += 't' + str(self.time) + ';'
+        s += str(self.x) + "," + str(self.y) + "," + str(self.z) + ';' + str(self.dir) 
         if len(self.cmd) > 0:
             s += ';' + string.join(self.cmd, ',')
         s += "]"
