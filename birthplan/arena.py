@@ -48,6 +48,7 @@ class Arena:
         new_planes = []
         airplane_data = json.loads(upd_json)
         self.clock = airplane_data['clock']
+        print "--- clock = " + str(self.clock) + " ---"
         plane_ids_found = {}
         for aplane_json in airplane_data['airplanes']:
             plane_ids_found[aplane_json['id']] = 1
