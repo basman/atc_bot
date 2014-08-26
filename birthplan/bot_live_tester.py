@@ -38,7 +38,7 @@ if __name__ == '__main__':
         else:
             #buf = con.read()
             
-            new_planes = arena.update(buf)
+            arena.update(buf)
             
         commands = sched.update()
         if not commands is None and len(commands) > 0:

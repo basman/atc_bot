@@ -5,7 +5,6 @@ import copy
 class Scheduler:
     # used for several flight paths improvements (i.e. pass above 3000 feet in the area of airports)
     COLLISION_RANGE = 4
-    COLLISION_PENALTY = 100
     
     def __init__(self, arena):
         self.arena = arena
@@ -50,7 +49,7 @@ class Scheduler:
         approach.dir_tolerance = 90 # allow max. 90 degree derivation from target direction
             
         # enter recursion
-        if not self.step_recursive(airplane, plan, start, approach):
+        if not self._step_recursive(airplane, plan, start, approach):
             print self.log
             raise Exception("Fatal: could not find a path from " + str(start) + " to " + str(airplane.dest))
         
@@ -80,7 +79,7 @@ class Scheduler:
                     return True
         return False
 
-    def step_recursive(self, airplane, path, p, dest):
+    def _step_recursive(self, airplane, path, p, dest):
         if p.equals(dest):
             return True
         
@@ -94,16 +93,16 @@ class Scheduler:
             path.append(p)
             if self._scheduled_is_collision(airplane, p):
                 return False
-            return self.step_recursive(airplane, path, p, dest)
+            return self._step_recursive(airplane, path, p, dest)
         
-        #self.log += "\n   step_recursive: try " + str(p)
+        #self.log += "\n   _step_recursive: try " + str(p)
         
         # to deal with existing airplanes, maintain direction and altitude for 
         # a while after entering through an exit
         if path[0].z > 0 and len(path) <= 2:
             steps = [ p.step() ]
         else:
-            steps = self.gen_possible_steps(p, dest)
+            steps = self._gen_possible_steps(p, dest)
         
         possible_steps = {}
         
@@ -160,14 +159,14 @@ class Scheduler:
             
         for st in ordered_steps:
             path.append(st)
-            if self.step_recursive(airplane, path, st, dest):
+            if self._step_recursive(airplane, path, st, dest):
                 return True
             else:
                 del(path[-1])
         return False
     
     
-    def gen_possible_steps(self, pos, dest):
+    def _gen_possible_steps(self, pos, dest):
         steps = []
         for delta_dir in ( 0, -45, 45, -90, 90 ):
             for delta_z in (-1, 0, 1):
@@ -204,8 +203,8 @@ class Scheduler:
                     # new airplane already in flight
                     self._compute_path(a)
                 if not a.equals(self.schedules[self.arena.clock][a]):
-                    print "Path: " + string.join(map(str, a.path), ',')
-                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self.schedules[self.arena.clock][a]))
+                    print "Path: " + self._sched2str(a)
+                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self.schedules[self.arena.clock][a]) + ', t=' + str(self.arena.clock))
 
             for c in self.schedules[self.arena.clock][a].cmd:
                 commands.append(a.id + c + "\n")
@@ -214,3 +213,12 @@ class Scheduler:
             print "cmd: " + c,
         return commands
     
+    def _sched2str(self, airplane):
+        clock = self.arena.clock
+        result = ''
+        while clock in self.schedules and airplane in self.schedules[clock]:
+            if clock != self.arena.clock:
+                result += ', '
+            result += str(self.schedules[clock][airplane])
+            clock += 1
+        return result

@@ -61,7 +61,7 @@ class Flightpaths:
         approach.dir_tolerance = 90 # allow max. 90 degree derivation from target direction
             
         # enter recursion
-        if not self.step_recursive(path, p, start, approach):
+        if not self._step_recursive(path, p, start, approach):
             print self.log
             print "Fatal: could not find a path from " + str(start) + " to " + str(dest)
             exit(1)
@@ -98,21 +98,21 @@ class Flightpaths:
 
         return path
 
-    def step_recursive(self, path, p, start, dest):
+    def _step_recursive(self, path, p, start, dest):
         if p.equals(dest):
             return True
         
         if len(path) > Airplane.MAX_RANGE:
             return False
         
-        #self.log += "\n   step_recursive: try " + str(p)
+        #self.log += "\n   _step_recursive: try " + str(p)
         
         # to deal with existing airplanes, maintain direction and altitude for 
         # a while after entering through an exit
         if not isinstance(start, Airport) and len(path) <= 2:
             steps = [ p.step() ]
         else:
-            steps = self.gen_possible_steps(p, start, dest)
+            steps = self._gen_possible_steps(p, start, dest)
         
         possible_steps = {}
         
@@ -176,14 +176,14 @@ class Flightpaths:
             
         for st in ordered_steps:
             path.append(st)
-            if self.step_recursive(path, st, start, dest):
+            if self._step_recursive(path, st, start, dest):
                 return True
             else:
                 del(path[-1])
         return False
     
     
-    def gen_possible_steps(self, pos, start, dest):
+    def _gen_possible_steps(self, pos, start, dest):
         steps = []
         for delta_dir in ( 0, -45, 45, -90, 90 ):
             for delta_z in (-1, 0, 1):
