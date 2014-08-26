@@ -86,7 +86,7 @@ class Scheduler:
 
     def _step_recursive(self, airplane, path, p, dest):
         # slow planes move every second time step
-        if p.time % airplane.speed != 0:
+        if (p.time+1) % airplane.speed != 0:
             p = copy.deepcopy(p)
             p.time += 1
             
@@ -202,9 +202,6 @@ class Scheduler:
         waiting = {}
         for a in self.arena.airplanes.values():
             
-            if self.arena.clock % a.speed != 0:
-                continue # ignore slow planes
-
             # pull up one single airplane per airport
             if a.z == 0:
                 ap = a.start
