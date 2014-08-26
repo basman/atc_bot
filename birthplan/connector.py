@@ -7,14 +7,14 @@ class Connector:
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.msg_queue = []
         print "connecting",
-        for i in range(20):
+        for i in range(2000):
             try:
                 self.s.connect((server, port))
                 print "success"
                 break
             except IOError as err:
                 print '.',
-                time.sleep(0.4)
+                time.sleep(0.2)
         else:
             print ""
             raise IOError("connection failed")
