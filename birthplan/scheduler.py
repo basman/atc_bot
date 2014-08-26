@@ -80,20 +80,26 @@ class Scheduler:
         return False
 
     def _step_recursive(self, airplane, path, p, dest):
+        # slow planes move every second time step
+        if p.time % airplane.speed != 0:
+            p = copy.deepcopy(p)
+            p.time += 1
+            
+            if self._scheduled_is_collision(airplane, p):
+                return False
+            
+            path.append(p)
+            if not self._step_recursive(airplane, path, p, dest):
+                del(path[-1])
+                return False
+            else:
+                return True
+        
         if p.equals(dest):
             return True
         
         if len(path) > Airplane.MAX_RANGE:
             return False
-        
-        # slow planes move every second time step
-        if p.time % airplane.speed != 0:
-            p = copy.deepcopy(p)
-            p.time += 1
-            path.append(p)
-            if self._scheduled_is_collision(airplane, p):
-                return False
-            return self._step_recursive(airplane, path, p, dest)
         
         #self.log += "\n   _step_recursive: try " + str(p)
         
