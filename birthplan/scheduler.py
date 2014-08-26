@@ -55,8 +55,7 @@ class Scheduler:
             
         # enter recursion
         if not self._step_recursive(airplane, plan, start, approach):
-            print self.log
-            raise Exception("Fatal: could not find a path from " + str(start) + " to " + str(airplane.dest))
+            raise Exception("Fatal: could not find a path for " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest))
         
         # append destination itself
         d = Position(airplane.dest)
