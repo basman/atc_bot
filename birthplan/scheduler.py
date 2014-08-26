@@ -11,24 +11,29 @@ class Scheduler:
         self.schedules = {} # nested dict; schedules[time][airplane_id] = position
     
 
-    def _compute_commands(self, path):
+    def _compute_commands(self, path, airplane):
         # compute commands along the path
         delta_z = 0 # ascent rate
         delta_z_idx = -1 # start of ascent rate
+        speed = airplane.speed
         for i in range(1, len(path)):
-            if path[i].z - path[i - 1].z != delta_z:
+            # slow planes move every second time step
+            if path[i].time % speed != 0:
+                continue
+
+            if path[i].z - path[i - speed].z != delta_z:
                 if delta_z_idx >= 0:
-                    path[delta_z_idx].add_cmd_altitude(path[i - 1].z) # new delta_z
-                delta_z = path[i].z - path[i - 1].z
+                    path[delta_z_idx].add_cmd_altitude(path[i - speed].z) # new delta_z
+                delta_z = path[i].z - path[i - speed].z
                 if delta_z != 0:
-                    delta_z_idx = i - 1
+                    delta_z_idx = i - speed
                     # don't forget last step (e.g. landing on airport)
                     if i == len(path) - 1:
-                        path[i - 1].add_cmd_altitude(path[i].z)
+                        path[i - speed].add_cmd_altitude(path[i].z)
                 else:
                     delta_z_idx = -1
-            if (i > 1 or path[0].z != 7) and path[i].dir != path[i - 1].dir or i == 1 and path[0].z == 7 and path[i].dir != path[0].reverseDirection():
-                path[i - 1].add_cmd_direction(path[i].dir)
+            if (i > 1 or path[0].z != 7) and path[i].dir != path[i - speed].dir or i == 1 and path[0].z == 7 and path[i].dir != path[0].reverseDirection():
+                path[i - speed].add_cmd_direction(path[i].dir)
 
     def _compute_path(self, airplane):
         
@@ -58,7 +63,7 @@ class Scheduler:
         d.time = plan[-1].time + 1
         plan.append( d )
         
-        self._compute_commands(plan)
+        self._compute_commands(plan, airplane)
             
         print str(start) + " to " + str(airplane.dest) + " (" + str(len(plan)) + " steps): ",
         print string.join(map(str, plan), '; ')
