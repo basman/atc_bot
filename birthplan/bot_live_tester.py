@@ -5,7 +5,7 @@ import string
 import os
 
 if __name__ == '__main__':
-    dir = '/home/rha/projects/atc/test-json/collision2'
+    dir = '/home/rha/projects/atc/test-json/collision3'
     start_time = time.time()
     i = 0
     while True:
