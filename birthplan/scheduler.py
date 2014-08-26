@@ -55,7 +55,10 @@ class Scheduler:
             
         # enter recursion
         if not self._step_recursive(airplane, plan, start, approach):
+            if start.z == 0:
+                return # airplane is waiting on ground. we might find a path later
             raise Exception("Fatal: could not find a path for " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest))
+            
         
         # append destination itself
         d = Position(airplane.dest)
@@ -207,7 +210,8 @@ class Scheduler:
                 if not ap in waiting and not ap.must_wait(self.arena.clock):
                     waiting[ap] = a
                 
-                self._compute_path(a)
+                if not self.arena.clock in self.schedules or not a in self.schedules[self.arena.clock]:
+                    self._compute_path(a)
                 
             else:
             # check flight path position for each plane, collect commands
