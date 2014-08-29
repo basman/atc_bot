@@ -85,7 +85,7 @@ class Simulator:
                     if old_z == 0:
                         raise Exception("can't change direction while grounded")
                     
-                    for angle in range(0, 360, 45):
+                    for angle in range(45, 360, 45):
                         if (a.dir + angle) % 360 == a.new_dir:
                             if angle > 180:
                                 # turn left
@@ -94,6 +94,7 @@ class Simulator:
                                 # turn right
                                 a.dir += min(angle, 90)
                             a.dir %= 360
+                            break
                     else:
                         raise Exception("internal error: can't find turning angle")
                 
