@@ -226,8 +226,11 @@ class Scheduler:
                     print "Path: " + self._sched2str(a)
                     raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self.schedules[self.arena.clock][a]) + ', t=' + str(self.arena.clock))
 
-            for c in self.schedules[self.arena.clock][a].cmd:
-                commands.append(a.id + c + "\n")
+            if self.arena.clock in self.schedules and a in self.schedules[self.arena.clock]:
+                # only airplanes still on the ground can avoid this loop
+                # (i.e. no collision free launch is possible at the moment)
+                for c in self.schedules[self.arena.clock][a].cmd:
+                    commands.append(a.id + c + "\n")
         
         for c in commands:
             print "cmd: " + c,
