@@ -1,5 +1,5 @@
 import json
-from position import *
+from position import Airplane, Airport, Exit, Beacon, Line
 
 class Arena:
     def __init__(self, arena_json):

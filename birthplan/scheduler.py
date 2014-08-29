@@ -1,5 +1,5 @@
 import string
-from position import *
+from position import Airplane, Airport, Exit, Position
 import copy
 
 class Scheduler:

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import unittest
-from position import *
+from position import Position
 
 class Tests(unittest.TestCase):
     def setUp(self):
