@@ -137,6 +137,9 @@ class Exit(Position):
         
     def __str__(self):
         return "E" + str(self.id) + self._tostr()
+    
+    def name(self):
+        return 'E' + str(self.id)
         
 class Airport(Position):
     
@@ -155,6 +158,9 @@ class Airport(Position):
 
     def __str__(self):
         return "A" + str(self.id)  + self._tostr()
+    
+    def name(self):
+        return 'A' + str(self.id)
 
 class Beacon(Position):
     def __init__(self, *args):
