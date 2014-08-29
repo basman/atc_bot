@@ -15,8 +15,12 @@ class Scheduler:
         # compute commands along the path
         delta_z = 0 # ascent rate
         delta_z_idx = -1 # start of ascent rate
-        speed = airplane.speed
         for i in range(1, len(path)):
+            speed = airplane.speed
+            if i == 1:
+                # slow plane might be born at odd time, so we might need a command on the first position (i.e. starting from airports)
+                speed = 1
+            
             # slow planes move every second time step
             if path[i].time % speed != 0:
                 continue
