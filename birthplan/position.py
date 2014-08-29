@@ -36,7 +36,7 @@ class Position:
         self.x = json['x']
         self.y = json['y']
         self.z = -1
-        self.dir = json['dir'] * 45
+        self.dir = json['dir']
     
     def __init_values(self, x, y, z, direction, direction_tolerance=0):
         self.x = x
@@ -200,7 +200,7 @@ class Airplane(Position):
         self.x = json_data['x']
         self.y = json_data['y']
         self.z = json_data['alt']
-        self.dir = json_data['dir'] * 45
+        self.dir = json_data['dir']
         self.fuel = json_data['fuel']
         print "UPDATE airplane " + str(self)
         

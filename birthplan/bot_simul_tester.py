@@ -22,13 +22,14 @@ class Simulator:
         self._init_command_values(self._arena.airplanes.values())
         
     def update(self, buf):
+        self._arena.clock += 1
         # buf might contain airplane updates from files
         # Simulator will add his stuff and return a combined update JSON
         if len(buf) > 0:
             update_data = json.loads(buf)
-            update_data['clock'] = self._arena.clock+1
+            update_data['clock'] = self._arena.clock
         else:
-            update_data = { 'clock': self._arena.clock+1, 'airplanes': [] }
+            update_data = { 'clock': self._arena.clock, 'airplanes': [] }
         
         # add existing planes or _arena.update() would delete them
         for a in self._arena.airplanes.values():
@@ -43,7 +44,7 @@ class Simulator:
                                              'x': a.x,
                                              'y': a.y,
                                              'alt': a.z,
-                                             'dir': a.dir / 45,
+                                             'dir': a.dir,
                                              'fuel': a.fuel,
                                              'dest': a.dest.name()
                                              })
@@ -61,11 +62,12 @@ class Simulator:
             a.new_dir = a.dir
     
     def _step(self):
-        result = { 'clock': self._arena.clock+1, 'airplanes': [] }
+        result = { 'clock': self._arena.clock, 'airplanes': [] }
         
         deletion_queue = []
         for a in self._arena.airplanes.values():
             if self._arena.clock % a.speed == 0:
+                old_z = a.z
                 # update altitude
                 if a.new_altitude > a.z and a.z < 9:
                     a.z += 1
@@ -96,18 +98,20 @@ class Simulator:
                         raise Exception("internal error: can't find turning angle")
                 
                 # move
-                p = a.step()
-                a.x = p.x
-                a.y = p.y
-                a.z = p.z
+                if a.z > 0:
+                    p = a.step()
+                    a.x = p.x
+                    a.y = p.y
+                    a.z = p.z
                 
                 # destination reached?
                 if a.equals(a.dest):
                     deletion_queue.append(a)
+                    print "SIMULATOR: airplane " + str(a) + " reached its destination " + a.dest.name()
                     continue
                     
                 # check validity
-                if a.z < 1:
+                if a.z < 1 and old_z > 0:
                     raise Exception("Airplane " + str(a) + " hit the ground")
                 if a.x < 1 or a.x >= self._arena.width - 1 \
                 or a.y < 1 or a.y >= self._arena.height - 1:
@@ -121,7 +125,7 @@ class Simulator:
                                         'alt': a.z,
                                         'dir': a.dir,
                                         'fuel': a.fuel,
-                                        'dest': a.dest
+                                        'dest': a.dest.name()
                                         })
         
         for a in deletion_queue:
@@ -137,8 +141,9 @@ class Simulator:
         
         return json.dumps(result)
         
-    def recv_command(self, commands):
+    def recv_commands(self, commands):
         for c in commands:
+            c = c[:-1]
             self._apply_command(c)
             
     def _apply_command(self, command):
@@ -193,22 +198,19 @@ if __name__ == '__main__':
         if i == 1:
             #buf = con.read() # read arena
             arena = arena.Arena(buf)
-            airways = scheduler.Scheduler(arena)
+            sched = scheduler.Scheduler(arena)
             simul = Simulator(arena)
             
             #while True:
-            commands = airways.update()
+            commands = sched.update()
             if not commands is None and len(commands) > 0:
                 #con.send(string.join(commands))
                 simul.recv_commands(commands)
         else:
                 buf = simul.update(buf)
                 
-                new_planes = arena.update(buf)
-                # set airplane.path
-                airways.set_paths(new_planes)
-
-                commands = airways.update()
+                arena.update(buf)
+                commands = sched.update()
                 if not commands is None and len(commands) > 0:
                     #con.send(string.join(commands))
                     simul.recv_commands(commands)
