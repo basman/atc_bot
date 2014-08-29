@@ -82,7 +82,7 @@ class Simulator:
                 
                 # update direction
                 if a.new_dir != a.dir:
-                    if a.z == 0:
+                    if old_z == 0:
                         raise Exception("can't change direction while grounded")
                     
                     for angle in range(0, 360, 45):
