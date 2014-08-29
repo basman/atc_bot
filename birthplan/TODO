@@ -1,2 +1,2 @@
-- use separate path thread for planes waiting for take-off
+- use separate path thread for planes waiting for take-off - or for any plane (how to avoid collisions?)
   (restart calculation in case new planes appear in the air before calculation finished)
