@@ -12,12 +12,10 @@ if __name__ == '__main__':
     
     buf = con.read() # read arena
     arena = Arena(buf)
-    sched = Scheduler(arena)
+    sched = Scheduler(arena, con)
     
     while True:
-        commands = sched.update()
-        if not commands is None and len(commands) > 0:
-            con.send(string.join(commands))
+        sched.update()
         
         buf = con.read()
         new_planes = arena.update(buf)

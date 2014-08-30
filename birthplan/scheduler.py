@@ -1,16 +1,17 @@
 import string
-from position import Airplane, Airport, Exit, Position
 import copy
+import time
+from position import Airplane, Airport, Exit, Position
 
 class Scheduler:
     # used for several flight paths improvements (i.e. pass above 3000 feet in the area of airports)
     COLLISION_RANGE = 4
     
-    def __init__(self, arena):
-        self.arena = arena
-        self.schedules = {} # nested dict; schedules[time][airplane_id] = position
+    def __init__(self, arena, connector):
+        self._arena = arena
+        self._connector = connector
+        self._schedules = {} # nested dict; _schedules[time][airplane_id] = position
     
-
     def _compute_commands(self, path, airplane):
         # compute commands along the path
         delta_z = 0 # ascent rate
@@ -39,12 +40,16 @@ class Scheduler:
             if (i > 1 or path[0].z != 7) and path[i].dir != path[i - speed].dir or i == 1 and path[0].z == 7 and path[i].dir != path[0].reverseDirection():
                 path[i - speed].add_cmd_direction(path[i].dir)
 
-    def _compute_path(self, airplane):
+    def _complex_path(self, airplane):
+        # used for airplanes were brute force path computation took to long
+        raise Exception("emergency procedures necessary for airplane " + str(airplane))
+
+    def _compute_path(self, airplane, timelimit):
         
         #print "looking for a path from " + str(start) + " to " + str(dest) + ", starting at " + str(p)
 
         start = Position(airplane)
-        start.time = self.arena.clock
+        start.time = self._arena.clock
         plan = [ start ]
         
         # aim for approach position, one step in front of airport or exit
@@ -58,12 +63,9 @@ class Scheduler:
         approach.dir_tolerance = 90 # allow max. 90 degree derivation from target direction
             
         # enter recursion
-        if not self._step_recursive(airplane, plan, start, approach):
-            if start.z == 0:
-                return # airplane is waiting on ground. we might find a path later
-            raise Exception("Fatal: could not find a path for " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest))
+        if not self._step_recursive(airplane, plan, start, approach, timelimit):
+            return False # airplane is waiting on ground. we might find a path later
             
-        
         # append destination itself
         d = Position(airplane.dest)
         d.time = plan[-1].time + 1
@@ -76,21 +78,22 @@ class Scheduler:
 
         # add schedule to database
         for s in plan:
-            if s.time < self.arena.clock:
-                raise Exception("can't schedule for past time " + str(s.time) + ". current time: " + str(self.arena.clock))
-            if not s.time in self.schedules:
-                self.schedules[s.time] = {}
-            self.schedules[s.time][airplane] = s
-
+            if s.time < self._arena.clock:
+                raise Exception("can't schedule for past time " + str(s.time) + ". current time: " + str(self._arena.clock))
+            if not s.time in self._schedules:
+                self._schedules[s.time] = {}
+            self._schedules[s.time][airplane] = s
+        
+        return True
 
     def _scheduled_is_collision(self, airplane, p):
-        if p.time in self.schedules:
-            for a in self.schedules[p.time]:
-                if self.schedules[p.time][a].is_collision(p):
+        if p.time in self._schedules:
+            for a in self._schedules[p.time]:
+                if self._schedules[p.time][a].is_collision(p):
                     return True
         return False
 
-    def _step_recursive(self, airplane, path, p, dest):
+    def _step_recursive(self, airplane, path, p, dest, timeout):
         # slow planes move every second time step
         if (p.time+1) % airplane.speed != 0:
             p = copy.deepcopy(p)
@@ -100,7 +103,7 @@ class Scheduler:
                 return False
             
             path.append(p)
-            if not self._step_recursive(airplane, path, p, dest):
+            if not self._step_recursive(airplane, path, p, dest, timeout):
                 del(path[-1])
                 return False
             else:
@@ -112,10 +115,14 @@ class Scheduler:
         if len(path) > Airplane.MAX_RANGE:
             return False
         
+        if time.time() > timeout:
+            print "Airplane " + str(airplane) + " can't find a path before next update"
+            return False
+        
         #self.log += "\n   _step_recursive: try " + str(p)
         
         # to deal with existing airplanes, maintain direction and altitude for 
-        # a while after entering through an exit
+        # a while (if coming from an exit)
         if path[0].z > 0 and len(path) <= 2:
             steps = [ p.step() ]
         else:
@@ -137,19 +144,19 @@ class Scheduler:
                     continue
                 
                 # exclude illegal steps (out of area or invalid altitude) 
-                if ( s.x <= 0 or s.y <= 0 or s.y >= self.arena.height-1 or s.x >= self.arena.width-1 or s.z < 1 or s.z > 9):
+                if ( s.x <= 0 or s.y <= 0 or s.y >= self._arena.height-1 or s.x >= self._arena.width-1 or s.z < 1 or s.z > 9):
                     continue
                 # must start straight from airport
                 if path[0].z == 0 and len(path) < 2 and s.dir != path[0].dir:
                     continue
                 # must be at altitude 9 if approaching any exit
-                for e in self.arena.exits:
+                for e in self._arena.exits:
                     if e.distanceXY(path[0]) > self.COLLISION_RANGE and \
                     e.distanceXY(s) < self.COLLISION_RANGE and \
                     s.z < 9:
                         skip = True
                         break
-                for a in self.arena.airports:
+                for a in self._arena.airports:
                     # except for our own destination: pass airports at 3000 feet or above
                     if a.distanceXY(dest) > self.COLLISION_RANGE and \
                     a.distanceXY(path[0]) > self.COLLISION_RANGE and \
@@ -176,12 +183,11 @@ class Scheduler:
             
         for st in ordered_steps:
             path.append(st)
-            if self._step_recursive(airplane, path, st, dest):
+            if self._step_recursive(airplane, path, st, dest, timeout):
                 return True
             else:
                 del(path[-1])
         return False
-    
     
     def _gen_possible_steps(self, pos, dest):
         steps = []
@@ -200,48 +206,68 @@ class Scheduler:
     
     def update(self):
         # cleanup past schedule
-        if self.arena.clock-1 in self.schedules:
-            del(self.schedules[self.arena.clock-1])
+        if self._arena.clock-1 in self._schedules:
+            del(self._schedules[self._arena.clock-1])
             
+        # Prio 0: guide old planes
         commands = []
-        
-        waiting = {}
-        for a in self.arena.airplanes.values():
-            
-            # pull up one single airplane per airport
-            if a.z == 0:
-                ap = a.start
-                if not ap in waiting and not ap.must_wait(self.arena.clock):
-                    waiting[ap] = a
-                
-                if not self.arena.clock in self.schedules or not a in self.schedules[self.arena.clock]:
-                    self._compute_path(a)
-                
-            else:
-            # check flight path position for each plane, collect commands
-                if not self.arena.clock in self.schedules or not a in self.schedules[self.arena.clock]:
-                    # new airplane already in flight
-                    self._compute_path(a)
-                if not a.equals(self.schedules[self.arena.clock][a]):
-                    print "Path: " + self._sched2str(a)
-                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self.schedules[self.arena.clock][a]) + ', t=' + str(self.arena.clock))
-
-            if self.arena.clock in self.schedules and a in self.schedules[self.arena.clock]:
+        unguided = []
+        for a in self._arena.airplanes.values():
+            if self._arena.clock in self._schedules and a in self._schedules[self._arena.clock]:
                 # only airplanes still on the ground can avoid this loop
                 # (i.e. no collision free launch is possible at the moment)
-                for c in self.schedules[self.arena.clock][a].cmd:
+                for c in self._schedules[self._arena.clock][a].cmd:
                     commands.append(a.id + c + "\n")
+                    print "cmd: " + a.id + c
+
+            # check flight path position for each plane
+                if not a.equals(self._schedules[self._arena.clock][a]):
+                    print "Path: " + self._sched2str(a)
+                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self._schedules[self._arena.clock][a]) + ', t=' + str(self._arena.clock))
+            else:
+                unguided.append(a)
+            
+        if len(commands) > 0:
+            self._connector.send(string.join(commands))
+            commands = []
+
+        waiting = {}
+        # allow searching for a solution for almost one update interval of atc
+        timelimit = time.time() + self._arena.update_time - 0.2
+        for a in unguided:
+        # Prio 1: guide new planes in the air
+            if a.z > 0:
+                if not self._arena.clock in self._schedules or not a in self._schedules[self._arena.clock]:
+                    # new airplane already in flight
+                    if not self._compute_path(a, timelimit):
+                        self._complex_path(a)
+            
+            else:
+        # Prio 2: guide new planes waiting on the ground
+                ap = a.start
+                # pull up one single airplane per airport
+                if not ap in waiting and not ap.must_wait(self._arena.clock):
+                    waiting[ap] = a
+                
+                if not self._arena.clock in self._schedules or not a in self._schedules[self._arena.clock]:
+                    self._compute_path(a, timelimit)
+            
+            # send commands for freshly routed planes
+            if self._arena.clock in self._schedules and a in self._schedules[self._arena.clock]:
+                for c in self._schedules[self._arena.clock][a].cmd:
+                    commands.append(a.id + c + "\n")
+                    print "cmd: " + a.id + c
         
-        for c in commands:
-            print "cmd: " + c,
-        return commands
+        if len(commands) > 0:
+            self._connector.send(string.join(commands))
+
     
     def _sched2str(self, airplane):
-        clock = self.arena.clock
+        clock = self._arena.clock
         result = ''
-        while clock in self.schedules and airplane in self.schedules[clock]:
-            if clock != self.arena.clock:
+        while clock in self._schedules and airplane in self._schedules[clock]:
+            if clock != self._arena.clock:
                 result += ', '
-            result += str(self.schedules[clock][airplane])
+            result += str(self._schedules[clock][airplane])
             clock += 1
         return result

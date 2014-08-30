@@ -3,6 +3,7 @@ from scheduler import Scheduler
 import time
 import string
 import os
+import sys
 
 if __name__ == '__main__':
     dir = '/home/rha/projects/atc/test-json/collision3'
@@ -31,7 +32,7 @@ if __name__ == '__main__':
         if i == 1:
             #buf = con.read() # read arena
             arena = Arena(buf)
-            sched = Scheduler(arena)
+            sched = Scheduler(arena, sys.stdout)
             
             #while True:
 
@@ -40,7 +41,4 @@ if __name__ == '__main__':
             
             arena.update(buf)
             
-        commands = sched.update()
-        if not commands is None and len(commands) > 0:
-            #con.send(string.join(commands))
-            print string.join(commands)
+        sched.update()

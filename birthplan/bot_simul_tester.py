@@ -2,6 +2,8 @@ import os
 import copy
 import json
 import time
+import string
+
 import arena
 import scheduler
 
@@ -142,9 +144,8 @@ class Simulator:
         
         return json.dumps(result)
         
-    def recv_commands(self, commands):
-        for c in commands:
-            c = c[:-1]
+    def send(self, commands):
+        for c in string.split("\n", commands):
             self._apply_command(c)
             
     def _apply_command(self, command):
@@ -180,7 +181,6 @@ if __name__ == '__main__':
         i += 1
         time.sleep(1)
         filename = dir + "/p" + str(i) + ".json"
-        buf = ""
         
         if os.path.exists(filename):
             try:
@@ -194,24 +194,17 @@ if __name__ == '__main__':
 
         elif i == 1:
             raise Exception("Fatal: need initial arena: " + filename + " not found.")
-        
+        else:
+            buf = ""
     
         if i == 1:
             #buf = con.read() # read arena
             arena = arena.Arena(buf)
-            sched = scheduler.Scheduler(arena)
             simul = Simulator(arena)
+            sched = scheduler.Scheduler(arena, simul)
             
-            #while True:
-            commands = sched.update()
-            if not commands is None and len(commands) > 0:
-                #con.send(string.join(commands))
-                simul.recv_commands(commands)
         else:
-                buf = simul.update(buf)
-                
-                arena.update(buf)
-                commands = sched.update()
-                if not commands is None and len(commands) > 0:
-                    #con.send(string.join(commands))
-                    simul.recv_commands(commands)
+            buf = simul.update(buf)
+            arena.update(buf)
+
+        sched.update()
