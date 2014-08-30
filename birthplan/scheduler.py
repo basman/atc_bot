@@ -134,14 +134,14 @@ class Scheduler:
         for s in steps:
             s.time = p.time+1
             
+            if self._scheduled_is_collision(airplane, s):
+                continue
+
             skip = False
             if s.equals(dest):
                 # present arrival as only solution
                 possible_steps[0] = [s]
                 break
-            else:
-                if self._scheduled_is_collision(airplane, s):
-                    continue
                 
                 # exclude illegal steps (out of area or invalid altitude) 
                 if ( s.x <= 0 or s.y <= 0 or s.y >= self._arena.height-1 or s.x >= self._arena.width-1 or s.z < 1 or s.z > 9):
