@@ -145,7 +145,7 @@ class Simulator:
         return json.dumps(result)
         
     def send(self, commands):
-        for c in string.split("\n", commands):
+        for c in string.split(commands):
             self._apply_command(c)
             
     def _apply_command(self, command):
