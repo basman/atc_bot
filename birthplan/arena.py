@@ -16,7 +16,8 @@ class Arena:
         arena_data = json.loads(arena_json)
         self.width = arena_data['width']
         self.height = arena_data['height']
-        self.interval = arena_data['interval']
+        self.update_time = arena_data['update']
+        self.newplane = arena_data['newplane']
         self.clock = arena_data['clock']
 
         for e in arena_data['exits']:
