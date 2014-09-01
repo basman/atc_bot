@@ -148,27 +148,28 @@ class Scheduler:
                 possible_steps[0] = [s]
                 break
                 
-                # exclude illegal steps (out of area or invalid altitude) 
-                if ( s.x <= 0 or s.y <= 0 or s.y >= self._arena.height-1 or s.x >= self._arena.width-1 or s.z < 1 or s.z > 9):
-                    continue
-                # must start straight from airport
-                if path[0].z == 0 and len(path) < 2 and s.dir != path[0].dir:
-                    continue
-                # must be at altitude 9 if approaching any exit
-                for e in self._arena.exits:
-                    if e.distanceXY(path[0]) > self.COLLISION_RANGE and \
-                    e.distanceXY(s) < self.COLLISION_RANGE and \
-                    s.z < 9:
-                        skip = True
-                        break
-                for a in self._arena.airports:
-                    # except for our own destination: pass airports at 3000 feet or above
-                    if a.distanceXY(dest) > self.COLLISION_RANGE and \
-                    a.distanceXY(path[0]) > self.COLLISION_RANGE and \
-                    a.distanceXY(s) < self.COLLISION_RANGE and \
-                    s.z < 3:
-                        skip = True
-                        break
+            # exclude illegal steps (out of area or invalid altitude) 
+            if ( s.x <= 0 or s.y <= 0 or s.y >= self._arena.height-1 or s.x >= self._arena.width-1 or s.z < 1 or s.z > 9):
+                continue
+            # must start straight from airport
+            if path[0].z == 0 and len(path) < 2 and s.dir != path[0].dir:
+                continue
+            # must be at altitude 9 if approaching any exit
+            for e in self._arena.exits:
+                if e.distanceXY(path[0]) > self.COLLISION_RANGE and \
+                e.distanceXY(s) < self.COLLISION_RANGE and \
+                s.z < 9:
+                    skip = True
+                    break
+            for a in self._arena.airports:
+                # except for our own destination: pass airports at 3000 feet or above
+                if a.distanceXY(dest) > self.COLLISION_RANGE and \
+                a.distanceXY(path[0]) > self.COLLISION_RANGE and \
+                a.distanceXY(s) < self.COLLISION_RANGE and \
+                s.z < 3:
+                    skip = True
+                    break
+
             if skip:
                 continue
 
