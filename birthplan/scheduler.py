@@ -52,6 +52,8 @@ class Scheduler:
         
         #print "looking for a path from " + str(start) + " to " + str(dest) + ", starting at " + str(p)
 
+        begin_computation = time.time()
+
         start = Position(airplane)
         start.time = self._arena.clock
         plan = [ start ]
@@ -68,7 +70,9 @@ class Scheduler:
             
         # enter recursion
         if not self._step_recursive(airplane, plan, start, approach, timelimit):
-            return False # airplane is waiting on ground. we might find a path later
+            print "Path of " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest) + ": COMPUTATION TIMEOUT (comp.time=" + \
+            str(int((time.time()-begin_computation) * 1000000)/1000.0) + "ms)"
+            return False
             
         # append destination itself
         d = Position(airplane.dest)
@@ -77,7 +81,8 @@ class Scheduler:
         
         self._compute_commands(plan, airplane)
             
-        print str(start) + " to " + str(airplane.dest) + " (" + str(len(plan)) + " steps): ",
+        print "Path of " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest) + " (" + str(len(plan)) + " steps, comp.time=" + \
+        str(int((time.time()-begin_computation) * 100000)/100.0) + "ms): ",
         print string.join(map(str, plan), '; ')
 
         # add schedule to database
