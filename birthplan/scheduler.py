@@ -218,7 +218,8 @@ class Scheduler:
         # Prio 0: guide old planes
         commands = []
         unguided = []
-        for a in self._arena.airplanes.values():
+        for aid in sorted(self._arena.airplanes.keys()):
+            a = self._arena.airplanes[aid]
             if self._arena.clock in self._schedules and a in self._schedules[self._arena.clock]:
                 # only airplanes still on the ground can avoid this loop
                 # (i.e. no collision free launch is possible at the moment)
