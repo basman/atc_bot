@@ -122,7 +122,7 @@ class Scheduler:
             return False
         
         if time.time() > timeout:
-            print "Airplane " + str(airplane) + " can't find a path before next update"
+            #print "Airplane " + str(airplane) + " can't find a path before next update"
             return False
         
         #self.log += "\n   _step_recursive: try " + str(p)
