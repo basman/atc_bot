@@ -66,8 +66,11 @@ class Scheduler:
             
         # enter recursion
         if not self._step_recursive(airplane, plan, start, approach, timelimit):
-            print "Path of " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest) + ": COMPUTATION TIMEOUT (comp.time=" + \
-            str(int((time.time()-begin_computation) * 1000000)/1000.0) + "ms)"
+            if time.time() > timelimit:
+                print "Path of " + str(airplane) + " from " + str(start) + " to " + str(airplane.dest) + ": COMPUTATION TIMEOUT (comp.time=" + \
+                str(int((time.time()-begin_computation) * 1000000)/1000.0) + "ms)"
+            else:
+                print "Airplane " + str(airplane) + " will delay its take-off due to ongoing traffic"
             return False
             
         # append destination itself
