@@ -117,7 +117,8 @@ class Scheduler:
         if p.equals(dest):
             return True
         
-        if len(path) > airplane.fuel * airplane.speed:
+        if len(path) >= airplane.fuel * airplane.speed:
+            # safe one fuel unit for the last step from approach to destination
             return False
         
         if time.time() > timeout:
