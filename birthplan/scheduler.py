@@ -240,7 +240,7 @@ class Scheduler:
 
         waiting = {}
         # allow searching for a solution for almost one update interval of atc
-        timelimit = time.time() + self._arena.update_time - 0.2
+        timelimit = time.time() + (float(self._arena.update_time - 0.02) / max(len(unguided), 1))
         for a in unguided:
         # Prio 1: guide new planes in the air
             if a.z > 0:
