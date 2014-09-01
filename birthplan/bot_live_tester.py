@@ -11,7 +11,7 @@ class DummyConnector:
         print "received command: " + s,
 
 if __name__ == '__main__':
-    dir = '/home/rha/projects/atc/test-json/collision3'
+    dir = '/home/rha/projects/atc/test-json/collision4'
     start_time = time.time()
     i = 0
     while True:
