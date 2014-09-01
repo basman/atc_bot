@@ -11,7 +11,6 @@ class Scheduler:
         self._arena = arena
         self._connector = connector
         self._schedules = {} # nested dict; _schedules[time][airplane_id] = position
-        self._complex_routes = {} # mark airplanes that need special treatment
     
     def _compute_commands(self, path, airplane):
         # compute commands along the path
@@ -43,10 +42,7 @@ class Scheduler:
 
     def _complex_path(self, airplane):
         # used for airplanes were brute force path computation took to long
-        #raise Exception("emergency procedures necessary for airplane " + str(airplane))
-        # mark plane for manual routing
-        self._complex_routes[airplane.id] = airplane
-        self._connector.send(airplane.id + "m\n")
+        raise Exception("emergency procedures necessary for airplane " + str(airplane))
 
     def _compute_path(self, airplane, timelimit):
         
@@ -93,8 +89,6 @@ class Scheduler:
                 self._schedules[s.time] = {}
             self._schedules[s.time][airplane] = s
         
-        # unmark airplane to indicate automatic routing
-        plan[min(2,len(plan)-1)].cmd.append("u")
         return True
 
     def _scheduled_is_collision(self, airplane, p):
@@ -247,10 +241,8 @@ class Scheduler:
         # allow searching for a solution for almost one update interval of atc
         timelimit = time.time() + self._arena.update_time - 0.2
         for a in unguided:
-            if a.id in self._complex_routes:
-                pass
         # Prio 1: guide new planes in the air
-            elif a.z > 0:
+            if a.z > 0:
                 if not self._arena.clock in self._schedules or not a in self._schedules[self._arena.clock]:
                     # new airplane already in flight
                     if not self._compute_path(a, timelimit):
