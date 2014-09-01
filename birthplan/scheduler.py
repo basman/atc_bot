@@ -118,7 +118,7 @@ class Scheduler:
         if p.equals(dest):
             return True
         
-        if len(path) > Airplane.MAX_RANGE:
+        if len(path) > airplane.fuel * airplane.speed:
             return False
         
         if time.time() > timeout:
