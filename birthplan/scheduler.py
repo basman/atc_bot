@@ -1,7 +1,7 @@
 import string
 import copy
 import time
-from position import Airplane, Airport, Exit, Position
+from position import Airport, Exit, Position
 
 class Scheduler:
     # used for several flight paths improvements (i.e. pass above 3000 feet in the area of airports)
