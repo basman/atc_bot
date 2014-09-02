@@ -165,14 +165,6 @@ class Scheduler:
                 s.z < 9:
                     skip = True
                     break
-            for a in self._arena.airports:
-                # except for our own destination: pass airports at 3000 feet or above
-                if a.distanceXY(dest) > self.COLLISION_RANGE and \
-                a.distanceXY(path[0]) > self.COLLISION_RANGE and \
-                a.distanceXY(s) < self.COLLISION_RANGE and \
-                s.z < 3:
-                    skip = True
-                    break
 
             if skip:
                 continue
