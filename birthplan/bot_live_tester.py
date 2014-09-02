@@ -1,14 +1,10 @@
 from arena import Arena
 from scheduler import Scheduler
+import connector
 import time
 import string
 import os
 import sys
-
-class DummyConnector:
-    # eats commands
-    def send(self, s):
-        print "received command: " + s,
 
 if __name__ == '__main__':
     dir = '/home/rha/projects/atc/test-json/collision4'
@@ -37,7 +33,7 @@ if __name__ == '__main__':
         if i == 1:
             #buf = con.read() # read arena
             arena = Arena(buf)
-            sched = Scheduler(arena, DummyConnector())
+            sched = Scheduler(arena, connector.DummyConnector())
             
             #while True:
 

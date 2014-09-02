@@ -2,6 +2,11 @@ import socket
 import re
 import time
 
+class DummyConnector:
+    # eats commands
+    def send(self, s):
+        print "received command: " + s,
+
 class Connector:
     def __init__(self, server='localhost', port=2028):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
