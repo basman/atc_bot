@@ -32,13 +32,16 @@ class Scheduler:
                 delta_z = path[i].z - path[i - speed].z
                 if delta_z != 0:
                     delta_z_idx = i - speed
-                    # don't forget last step (e.g. landing on airport)
-                    if i == len(path) - 1:
-                        path[i - speed].add_cmd_altitude(path[i].z)
                 else:
                     delta_z_idx = -1
+            
             if (i > 1 or path[0].z != 7) and path[i].dir != path[i - speed].dir or i == 1 and path[0].z == 7 and path[i].dir != path[0].reverseDirection():
                 path[i - speed].add_cmd_direction(path[i].dir)
+                
+        else:
+            # don't forget command for last section
+            if delta_z != 0:
+                path[delta_z_idx].add_cmd_altitude(path[-1].z)
 
     def _complex_path(self, airplane):
         # used for airplanes were brute force path computation took to long
