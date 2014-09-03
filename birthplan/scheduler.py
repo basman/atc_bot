@@ -228,8 +228,15 @@ class Scheduler:
 
             # check flight path position for each plane
                 if not a.equals(self._schedules[self._arena.clock][a]):
-                    print "Path: " + self._sched2str(a)
-                    raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self._schedules[self._arena.clock][a]) + ', t=' + str(self._arena.clock))
+                    # In rare cases an airplane can reach its destination and the ID is reused by a new plane during the same update cycle.
+                    # The bot will think it is still the old plane that jumped to a different location.
+                    # We analyse the jump distance. If it's more than 3, we delete the airplane and let it reappear by the next update, which will 
+                    # trigger a path calculation.
+                    if a.distance(self._schedules[self._arena.clock][a]) >= 4:
+                        unguided.append(a)
+                    else:
+                        print "Path: " + self._sched2str(a)
+                        raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self._schedules[self._arena.clock][a]) + ', t=' + str(self._arena.clock))
             else:
                 unguided.append(a)
             
@@ -243,10 +250,9 @@ class Scheduler:
         for a in unguided:
         # Prio 1: guide new planes in the air
             if a.z > 0:
-                if not self._arena.clock in self._schedules or not a in self._schedules[self._arena.clock]:
-                    # new airplane already in flight
-                    if not self._compute_path(a, timelimit):
-                        self._complex_path(a)
+                # new airplane already in flight
+                if not self._compute_path(a, timelimit):
+                    self._complex_path(a)
             
             else:
         # Prio 2: guide new planes waiting on the ground
