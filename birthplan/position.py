@@ -197,12 +197,18 @@ class Airplane(Position):
         Airplane.MAX_RANGE = arena.width + arena.height
 
     def update(self, json_data):
+        old_pos = Position(self)
         self.x = json_data['x']
         self.y = json_data['y']
         self.z = json_data['alt']
         self.dir = json_data['dir']
         self.fuel = json_data['fuel']
+        if json_data['dest'] != self.dest_name or old_pos.distance(self) >= 4:
+            # help scheduler detect the glitch when a plane reaches the destination and another plane is recreated using the same ID during the same update cycle
+            print "REBORN airplane " + str(self)
+            return False
         print "UPDATE airplane " + str(self)
+        return True
         
     def __str__(self):
         return str(self.id) + ': [' + str(self.x) + ',' + str(self.y) + ',' + str(self.z) + ';' + str(self.dir) + ';fuel=' + str(self.fuel) + ']'

@@ -56,7 +56,8 @@ class Arena:
             
             if aplane_json['id'] in self.airplanes:
                 # update existing plane
-                self.airplanes[aplane_json['id']].update(aplane_json)
+                if not self.airplanes[aplane_json['id']].update(aplane_json):
+                    del(self.airplanes[aplane_json['id']])
             else:
                 # new plane
                 aplane_json['resolved_dest'] = self.lookup_destination(aplane_json['dest'])

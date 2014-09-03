@@ -230,7 +230,9 @@ class Scheduler:
                 if not a.equals(self._schedules[self._arena.clock][a]):
                     # In rare cases an airplane can reach its destination and the ID is reused by a new plane during the same update cycle.
                     # The bot will think it is still the old plane that jumped to a different location.
-                    # We analyse the jump distance. If it's more than 3, we delete the airplane and let it reappear by the next update, which will 
+                    # We compare the destination of a plane during updates with the original dest. to make this glitch even less probable. See 
+                    # Arena.update() and Airplane.update()
+                    # Here we analyse the jump distance. If it's more than 4, we delete the airplane and let it reappear by the next update, which will 
                     # trigger a path calculation.
                     if a.distance(self._schedules[self._arena.clock][a]) >= 4:
                         unguided.append(a)
