@@ -204,8 +204,8 @@ class Scheduler:
             for delta_dir in ( 0, -45, 45, -90, 90 ):
                 for delta_z in (-1, 0, 1):
                     npos = pos.step(delta_dir, delta_z)
-                    # skip invalid steps and enforce outgoing airplanes to approach an exit at 9000 feet
-                    if not npos is None and not ( npos.z != 9 and isinstance(dest, Exit) and dest.distance(npos) < self.COLLISION_RANGE ):
+                    # skip invalid steps
+                    if not npos is None:
                         steps.append(npos)
         return steps
     
