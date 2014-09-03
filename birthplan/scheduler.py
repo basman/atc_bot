@@ -215,8 +215,9 @@ class Scheduler:
             del(self._schedules[self._arena.clock-1])
             
         # Prio 0: guide old planes
-        commands = []
-        unguided = []
+        commands = []   # collect commands of all guided airplanes
+        unguided = []   # list unguided airplanes for path computation
+        gonner = []     # list airplanes that jumped (glitch!) and therefor were reborn
         for aid in sorted(self._arena.airplanes.keys()):
             a = self._arena.airplanes[aid]
             if self._arena.clock in self._schedules and a in self._schedules[self._arena.clock]:
@@ -233,7 +234,8 @@ class Scheduler:
                     # We analyse the jump distance. If it's more than 3, we delete the airplane and let it reappear by the next update, which will 
                     # trigger a path calculation.
                     if a.distance(self._schedules[self._arena.clock][a]) >= 4:
-                        unguided.append(a)
+                        print "REBORN airplane " + str(a)
+                        gonner.append(a)
                     else:
                         print "Path: " + self._sched2str(a)
                         raise Exception("airplane left flight path: " + str(a) + ", expected " + str(self._schedules[self._arena.clock][a]) + ', t=' + str(self._arena.clock))
@@ -247,6 +249,14 @@ class Scheduler:
         waiting = {}
         # allow searching for a solution for almost one update interval of atc
         timelimit = time.time() + (float(self._arena.update_time - 0.02) / max(len(unguided), 1))
+        
+        # cleanup airplanes and commands that were reborn under the same name. They will be routed upon the next update cycle.
+        for a in gonner:
+            del(self._arena.airplanes[a.id])
+            for i in range(2):
+                if self._arena.clock+i in self._schedules and a in self._schedules[self._arena.clock+i]:
+                    del(self._schedules[self._arena.clock+i][a])
+            
         for a in unguided:
         # Prio 1: guide new planes in the air
             if a.z > 0:
