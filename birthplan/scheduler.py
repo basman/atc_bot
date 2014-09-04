@@ -57,16 +57,17 @@ class Scheduler:
         start.time = self._arena.clock
         plan = [ start ]
         
-        # aim for approach position, one step in front of airport or exit
-        tmp = Position(airplane.dest)
-        tmp.dir = tmp.reverseDirection()
+        # aim for approach position, one step in front of airport
         if isinstance(airplane.dest, Airport):
+            tmp = Position(airplane.dest)
+            tmp.dir = tmp.reverseDirection()
             approach = tmp.step(0, 1)
+            approach.dir = airplane.dest.dir # turn around
         else:
-            approach = tmp.step(0, 0)
-        approach.dir = airplane.dest.dir # turn around
+            approach = Position(airplane.dest)
+
         approach.dir_tolerance = 90 # allow max. 90 degree derivation from target direction
-            
+        
         # enter recursion
         if not self._step_recursive(airplane, plan, start, approach, timelimit):
             if time.time() > timelimit:
