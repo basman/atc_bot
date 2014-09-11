@@ -116,7 +116,7 @@ class Scheduler:
     def _step_recursive(self, airplane, path, p, dest, timeout):
         # slow planes move every second time step
         if (p.time+1) % airplane.speed != 0:
-            p = copy.deepcopy(p)
+            p = copy.deepcopy(p) # copy fuel level, so Position(p) won't suffice
             p.time += 1
             
             if self._scheduled_is_collision(airplane, p):
@@ -251,6 +251,7 @@ class Scheduler:
         waiting = {}
         # allow searching for a solution for almost one update interval of atc
         timelimit = time.time() + (float(self._arena.update_time - 0.02) / max(len(unguided), 1))
+        #timelimit = time.time() + 3600*10
         
         # cleanup airplanes and commands that were reborn under the same name. They will be routed upon the next update cycle.
         for a in gonner:
