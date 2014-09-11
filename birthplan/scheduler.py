@@ -190,6 +190,7 @@ class Scheduler:
             
         for st in ordered_steps:
             path.append(st)
+            print '-STEPPING(' + str(len(path)) + '): ' + ','.join(map(str, path))
             if self._step_recursive(airplane, path, st, dest, timeout):
                 return True
             else:
