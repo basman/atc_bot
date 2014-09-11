@@ -43,6 +43,16 @@ class Scheduler:
 
     def _complex_path(self, airplane):
         # used for airplanes were brute force path computation took to long
+        print "all scheduled flight paths at moment of despair:"
+        for aid in sorted(self._arena.airplanes):
+            a = self._arena.airplanes[aid]
+            print "Airplane " + aid + ": ",
+            i=self._arena.clock
+            while i in self._schedules and a in self._schedules[i]:
+                print "%15s " % str(self._schedules[i][a]),
+                i += 1
+            print ""
+            
         raise Exception("emergency procedures necessary for airplane " + str(airplane))
 
     def _compute_path(self, airplane, timelimit):
