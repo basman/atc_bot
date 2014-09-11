@@ -5,6 +5,9 @@ from position import Airport, Exit, Position
 
 class Scheduler:
     
+    DEBUG_STEPS = False
+    DEBUG_NO_TIMEOUT = False
+    
     def __init__(self, arena, connector):
         self._arena = arena
         self._connector = connector
@@ -190,7 +193,8 @@ class Scheduler:
             
         for st in ordered_steps:
             path.append(st)
-            print '-STEPPING(' + str(len(path)) + '): ' + ','.join(map(str, path))
+            if Scheduler.DEBUG_STEPS:
+                print '-STEPPING(' + str(len(path)) + '): ' + ','.join(map(str, path))
             if self._step_recursive(airplane, path, st, dest, timeout):
                 return True
             else:
@@ -252,7 +256,8 @@ class Scheduler:
         waiting = {}
         # allow searching for a solution for almost one update interval of atc
         timelimit = time.time() + (float(self._arena.update_time - 0.02) / max(len(unguided), 1))
-        #timelimit = time.time() + 3600*10
+        if Scheduler.DEBUG_NO_TIMEOUT:
+            timelimit = time.time() + 3600*24*7
         
         # cleanup airplanes and commands that were reborn under the same name. They will be routed upon the next update cycle.
         for a in gonner:
