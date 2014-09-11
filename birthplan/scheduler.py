@@ -4,8 +4,6 @@ import time
 from position import Airport, Exit, Position
 
 class Scheduler:
-    # used for several flight paths improvements (i.e. pass above 3000 feet in the area of airports)
-    COLLISION_RANGE = 4
     
     def __init__(self, arena, connector):
         self._arena = arena
@@ -162,14 +160,7 @@ class Scheduler:
             # must start straight from airport
             if path[0].z == 0 and len(path) < 2 and s.dir != path[0].dir:
                 continue
-            # must be at altitude 9 if approaching any exit
-            for e in self._arena.exits:
-                if e.distanceXY(path[0]) > self.COLLISION_RANGE and \
-                e.distanceXY(s) < self.COLLISION_RANGE and \
-                s.z < 9:
-                    skip = True
-                    break
-
+            
             if skip:
                 continue
 
