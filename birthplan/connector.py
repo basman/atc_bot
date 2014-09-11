@@ -5,7 +5,7 @@ import time
 class DummyConnector:
     # eats commands
     def send(self, s):
-        print "received command: " + s,
+        print "emitted commands: " + ','.join(s.split())
 
 class Connector:
     def __init__(self, server='localhost', port=2028):
