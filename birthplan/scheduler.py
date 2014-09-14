@@ -145,12 +145,7 @@ class Scheduler:
         
         #self.log += "\n   _step_recursive: try " + str(p)
         
-        # to deal with existing airplanes, maintain direction and altitude for 
-        # a while (if coming from an exit)
-        if path[0].z > 0 and len(path) <= 2:
-            steps = [ p.step() ]
-        else:
-            steps = self._gen_possible_steps(p, dest)
+        steps = self._gen_possible_steps(p, dest)
         
         possible_steps = {}
         
