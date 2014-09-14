@@ -145,7 +145,7 @@ class Scheduler:
         
         #self.log += "\n   _step_recursive: try " + str(p)
         
-        steps = self._gen_possible_steps(p, dest)
+        steps = self._gen_possible_steps(p)
         
         possible_steps = {}
         
@@ -196,7 +196,7 @@ class Scheduler:
                 del(path[-1])
         return False
     
-    def _gen_possible_steps(self, pos, dest):
+    def _gen_possible_steps(self, pos):
         steps = []
         
         if pos.z == 0:
