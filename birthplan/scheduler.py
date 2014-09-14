@@ -1,5 +1,4 @@
 import string
-import copy
 import time
 from position import Airport, Exit, Position
 
@@ -119,7 +118,7 @@ class Scheduler:
     def _step_recursive(self, airplane, path, p, dest, timeout):
         # slow planes move every second time step
         if (p.time+1) % airplane.speed != 0:
-            p = copy.deepcopy(p) # copy fuel level, so Position(p) won't suffice
+            p = Position(p)
             p.time += 1
             
             if self._scheduled_is_collision(airplane, p):

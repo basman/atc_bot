@@ -30,6 +30,8 @@ class Position:
         
     def __init_copy(self, orig):
         self.__init_values(orig.x, orig.y, orig.z, orig.dir, orig.dir_tolerance)
+        if hasattr(self, 'time'):
+            self.time = orig.time
     
     def __init_json(self, json):
         self.id = json['id']
