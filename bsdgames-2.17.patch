@@ -1,0 +1,586 @@
+diff -rupN bsdgames-2.17.orig/atc/botsocket.c bsdgames-2.17/atc/botsocket.c
+--- bsdgames-2.17.orig/atc/botsocket.c	1970-01-01 10:00:00.000000000 +1000
++++ bsdgames-2.17/atc/botsocket.c	2014-10-31 22:08:15.517350519 +1100
+@@ -0,0 +1,286 @@
++#include "include.h"
++#include "extern.h"
++
++#define BOT_MSG_INDENT "    "
++#define BOT_TCP_PORT 2028
++#define BOT_SEND_BUF_SIZE 1024*16
++
++static int bot_server = -1;
++static int bot_client = -1;
++
++static void bot_append_s(char *buf, int maxlen, const char *s) {
++	strncat(buf, s, maxlen - strlen(buf) - 1);
++}
++
++int bot_get_client_socket() {
++	return bot_client;
++}
++
++int bot_get_server_socket() {
++	return bot_server;
++}
++
++int bot_setup() {
++	struct sockaddr_in saddr;
++	int val = 1;
++
++	bot_server = socket(AF_INET, SOCK_STREAM, 0);
++
++	if(bot_server == -1) {
++		perror("failed creating bot socket");
++		exit(1);
++	}
++
++	if(setsockopt(bot_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) == -1) {
++		perror("failed setting option REUSEADDR on bot socket");
++		exit(1);
++	}
++
++	saddr.sin_family = AF_INET;
++	saddr.sin_addr.s_addr = INADDR_ANY;
++	saddr.sin_port = htons( BOT_TCP_PORT );
++
++	if( bind(bot_server, (struct sockaddr *)&saddr, sizeof(saddr)) < 0)
++    {
++		perror("bind failed. Error");
++		exit(1);
++	}
++
++	if( fcntl(bot_server, F_SETFL, O_NONBLOCK) < 0 ) {
++		perror("setting bot socket to non-blocking mode. Error");
++		exit(1);
++	}
++
++	signal(SIGPIPE, SIG_IGN);
++
++	listen(bot_server, 3);
++
++	return 1;
++}
++
++// return a single character or EOF if none available
++int bot_read() {
++	char c;
++	int len;
++
++	if(bot_client < 0)
++		return EOF; // client not connected
++
++	len = read(bot_client, &c, 1);
++
++	if(len == 0 || len < 0 && errno == ECONNRESET) {
++		// client disconnected
++		close(bot_client);
++		bot_client = -1;
++		return EOF;
++	} else if(len < 0) {
++		if (errno == EAGAIN || errno == EINTR)
++			return EOF;
++
++		perror("read from client. Error");
++		sleep(2);
++		exit(1);
++	}
++
++	return c;
++}
++
++static void bot_send(const char *cmd) {
++	int len;
++
++	if (bot_client < 0)
++		return;
++
++	len = write(bot_client, cmd, strlen(cmd));
++	if (len < 0) {
++		// EPIPE would signal disconnected client but any error means the same to us
++		close(bot_client);
++		bot_client = -1;
++	}
++}
++
++static char *bot_screenpos2json(char *buf, const int buflen, const SCREEN_POS *obj, const int obj_id) {
++	snprintf(buf, buflen, "{ \"id\": %i, \"x\": %i, \"y\": %i, \"dir\": %i }",
++		obj_id, obj->x, obj->y, obj->dir*45);
++
++	return buf;
++}
++
++static char *bot_line2json(char *buf, const int buflen, const LINE *line, const int line_id) {
++	snprintf(buf, buflen, "{ \"id\": %i, \"x1\": %i, \"y1\": %i, \"x2\": %i, \"y2\": %i }",
++		line_id, line->p1.x, line->p1.y, line->p2.x, line->p2.y );
++
++	return buf;
++}
++
++static char *bot_airplanes2json(char *buf, const int buflen) {
++	PLANE *pp;
++	char plane_buf[256];
++	int count = 0;
++
++	snprintf(buf, buflen, "%s\"airplanes\": [\n", BOT_MSG_INDENT);
++
++	// airplanes inflight
++	for (pp = air.head; pp != NULL; pp = pp->next) {
++		if (count)
++			strncat(buf, ",\n", buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++
++		snprintf(plane_buf, sizeof(plane_buf)/sizeof(plane_buf[0]),
++			"{ \"id\": \"%c\", \"x\": %i, \"y\": %i, \"alt\": %i, \"dir\": %i, \"fuel\": %i, \"dest\": \"%c%i\" }",
++			( pp->plane_type == 0 ? 'A' : 'a' ) + pp->plane_no,
++			pp->xpos, pp->ypos, pp->altitude, pp->dir*45, pp->fuel,
++			( pp->dest_type == T_AIRPORT ? 'A' : 'E' ), pp->dest_no );
++
++		strncat(buf, plane_buf, buflen - strlen(buf) - 1);
++		++count;
++	}
++
++	// airplanes waiting for takeoff
++	for (pp = ground.head; pp != NULL; pp = pp->next) {
++		if (count)
++			strncat(buf, ",\n", buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++		strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++
++		snprintf(plane_buf, sizeof(plane_buf)/sizeof(plane_buf[0]),
++			"{ \"id\": \"%c\", \"x\": %i, \"y\": %i, \"alt\": %i, \"dir\": %i, \"fuel\": %i, \"dest\": \"%c%i\" }",
++			( pp->plane_type == 0 ? 'A' : 'a' ) + pp->plane_no,
++			pp->xpos, pp->ypos, pp->altitude, pp->dir*45, pp->fuel,
++			( pp->dest_type == T_AIRPORT ? 'A' : 'E' ), pp->dest_no );
++
++		strncat(buf, plane_buf, buflen - strlen(buf) - 1);
++		++count;
++	}
++
++	if (count)
++		strncat(buf, "\n", buflen - strlen(buf) - 1);
++
++	strncat(buf, BOT_MSG_INDENT, buflen - strlen(buf) - 1);
++	strncat(buf, "]\n", buflen - strlen(buf) - 1);
++}
++
++static void bot_send_screen() {
++	int i;
++	char send_buf[BOT_SEND_BUF_SIZE];
++
++	if (bot_client < 0)
++		return;
++
++	// put dimensions
++	snprintf(send_buf, BOT_SEND_BUF_SIZE, "{\n%s\"width\": %i, \"height\": %i, \"update\": %i, \"newplane\": %i, \"clock\": %i,\n", 
++		BOT_MSG_INDENT, sp->width, sp->height, sp->update_secs, sp->newplane_time, clck);
++
++	// put exits
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\"exits\": [\n");
++	for (i=0; i < sp->num_exits; ++i) {
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_screenpos2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf), &sp->exit[i], i );
++		if (i < sp->num_exits - 1)
++			bot_append_s(send_buf, BOT_SEND_BUF_SIZE, ",");
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\n");
++	}
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "],\n");
++
++	// send airports
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\"airports\": [\n");
++	for (i=0; i < sp->num_airports; ++i) {
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_screenpos2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf), &sp->airport[i], i );
++		if (i < sp->num_airports - 1)
++			bot_append_s(send_buf, BOT_SEND_BUF_SIZE, ",");
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\n");
++	}
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "],\n");
++
++	// send beacons
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\"beacons\": [\n");
++	for (i=0; i < sp->num_beacons; ++i) {
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_screenpos2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf), &sp->beacon[i], i );
++		if (i < sp->num_beacons - 1)
++			bot_append_s(send_buf, BOT_SEND_BUF_SIZE, ",");
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\n");
++	}
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "],\n");
++
++	// send lines
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\"lines\": [\n");
++	for (i=0; i < sp->num_lines; ++i) {
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++		bot_line2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf), &sp->line[i], i );
++		if (i < sp->num_lines - 1)
++			bot_append_s(send_buf, BOT_SEND_BUF_SIZE, ",");
++		bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "\n");
++	}
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, BOT_MSG_INDENT);
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "],\n");
++
++	// send movable objects: airplanes
++	bot_airplanes2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf) );
++
++	bot_append_s(send_buf, BOT_SEND_BUF_SIZE, "}\n");
++	bot_send(send_buf);
++}
++
++void bot_send_update() {
++	char send_buf[BOT_SEND_BUF_SIZE];
++
++	if (bot_client < 0)
++		return;
++	
++	snprintf(send_buf, BOT_SEND_BUF_SIZE, "{\n%s\"clock\": %i,\n", BOT_MSG_INDENT, clck);
++
++	// send movable objects: airplanes
++	bot_airplanes2json( send_buf + strlen(send_buf), BOT_SEND_BUF_SIZE - strlen(send_buf) );
++
++	bot_append_s( send_buf, BOT_SEND_BUF_SIZE, "}\n" );
++	bot_send(send_buf);
++}
++
++int bot_accept() {
++	int c;
++	struct sockaddr_in client_addr;
++
++	if (bot_client >= 0 || bot_server < 0)
++		return 0; // client already connected or bot interface disabled
++
++	c = sizeof(client_addr);
++	bot_client = accept4(bot_server, (struct sockaddr *)&client_addr, (socklen_t*)&c, SOCK_NONBLOCK);
++
++	if(bot_client < 0) {
++		if(errno == EAGAIN)
++			return 0; // no incoming connection
++		perror("Accept failed. Error");
++		exit(1);
++	}
++
++	bot_send_screen();
++
++	return 1;
++}
++
++void bot_close() {
++	if(bot_server > -1) {
++		close(bot_server);
++		bot_server = -1;
++	}
++	if(bot_client > -1) {
++		close(bot_client);
++		bot_client = -1;
++	}
++}
+diff -rupN bsdgames-2.17.orig/atc/botsocket.h bsdgames-2.17/atc/botsocket.h
+--- bsdgames-2.17.orig/atc/botsocket.h	1970-01-01 10:00:00.000000000 +1000
++++ bsdgames-2.17/atc/botsocket.h	2014-10-31 22:08:15.517350519 +1100
+@@ -0,0 +1,12 @@
++#ifndef BOT_SOCKET_H
++#define BOT_SOCKET_H
++
++extern int bot_setup();			// create listening socket
++extern int bot_accept();		// look for incoming bot connection
++extern int bot_read();			// read commands from bot if available
++extern void bot_send_update();	// send movements of airplanes to bot
++extern int bot_get_client_socket();	// return client socket (-1 if not connected)
++extern int bot_get_server_socket();	// return server socket (-1 if -b not given)
++extern void bot_close();		// stop accepting connections
++
++#endif
+diff -rupN bsdgames-2.17.orig/atc/extern.c bsdgames-2.17/atc/extern.c
+--- bsdgames-2.17.orig/atc/extern.c	2003-12-17 13:47:37.000000000 +1100
++++ bsdgames-2.17/atc/extern.c	2014-10-31 22:08:15.517350519 +1100
+@@ -54,7 +54,7 @@ __RCSID("$NetBSD: extern.c,v 1.7 2003/08
+ 
+ char		GAMES[] =	"Game_List";
+ 
+-int		clck, safe_planes, start_time, test_mode;
++int		clck, safe_planes, start_time, test_mode, bot;
+ 
+ const char	*file;
+ 
+diff -rupN bsdgames-2.17.orig/atc/extern.h bsdgames-2.17/atc/extern.h
+--- bsdgames-2.17.orig/atc/extern.h	2004-01-28 07:52:07.000000000 +1100
++++ bsdgames-2.17/atc/extern.h	2014-10-31 22:08:15.517350519 +1100
+@@ -46,7 +46,7 @@
+ extern char		GAMES[];
+ extern const char	*file;
+ 
+-extern int		clck, safe_planes, start_time, test_mode;
++extern int		clck, safe_planes, start_time, test_mode, bot;
+ 
+ extern FILE		*filein, *fileout;
+ 
+diff -rupN bsdgames-2.17.orig/atc/graphics.c bsdgames-2.17/atc/graphics.c
+--- bsdgames-2.17.orig/atc/graphics.c	2003-12-17 13:47:37.000000000 +1100
++++ bsdgames-2.17/atc/graphics.c	2014-10-31 22:08:15.517350519 +1100
+@@ -65,13 +65,61 @@ WINDOW	*radar, *cleanradar, *credit, *in
+ int
+ getAChar()
+ {
++	struct timeval timeout;
++	fd_set read_fds, write_fds, except_fds;
++	int client_socket, server_socket;
++	int ret;
+ 	int c;
+ 
+-	errno = 0;
+-	while ((c = getchar()) == EOF && errno == EINTR) {
++	if (bot) {
++		do {
++			client_socket = bot_get_client_socket();
++			server_socket = bot_get_server_socket();
++			FD_ZERO(&read_fds);
++			FD_ZERO(&write_fds);
++			FD_ZERO(&except_fds);
++			FD_SET(0, &read_fds);
++			FD_SET(server_socket, &read_fds);
++
++			timeout.tv_sec = 1;
++			timeout.tv_usec = 0;
++
++			if (client_socket >= 0) {
++				FD_SET(client_socket, &read_fds);
++				ret = select(client_socket+1, &read_fds, &write_fds, &except_fds, &timeout);
++			} else {
++				ret = select(server_socket+1, &read_fds, &write_fds, &except_fds, &timeout);
++			}
++
++			if (ret == -1 && errno == EBADF || client_socket >= 0 && FD_ISSET(client_socket, &except_fds)) {
++				bot_read(); // take care of closed socket
++				ret = -1;
++			}
++			if (client_socket < 0 && FD_ISSET(server_socket, &read_fds)) {
++				bot_accept();
++				/* stay within input loop or ghost/garbage input will cause segvault in isdigit() */
++				ret = 0;
++			}
++		} while (ret <= 0);
++
++		if (client_socket >= 0 && FD_ISSET(client_socket, &read_fds)) {
++			// prefer network input over console input
++			c = bot_read();
++		} else if (FD_ISSET(0, &read_fds)) {
++			c = getchar();
++		} else {
++			fprintf(stderr, "unknown state in select()");
++			sleep(2);
++			exit(1);
++		}
++	} else {
+ 		errno = 0;
+-		clearerr(stdin);
++		while ((c = getchar()) == EOF && errno == EINTR) {
++			errno = 0;
++			clearerr(stdin);
++		}
+ 	}
++
+ 	return(c);
+ }
+ 
+@@ -394,6 +442,8 @@ loser(p, s)
+ 	alarm(0);
+ #endif
+ 
++	bot_close();
++
+ 	wmove(input, 0, 0);
+ 	wclrtobot(input);
+ 	/* p may be NULL if we ran out of memory */
+diff -rupN bsdgames-2.17.orig/atc/include.h bsdgames-2.17/atc/include.h
+--- bsdgames-2.17.orig/atc/include.h	2003-12-17 13:47:37.000000000 +1100
++++ bsdgames-2.17/atc/include.h	2014-10-31 22:08:15.517350519 +1100
+@@ -44,6 +44,8 @@
+  */
+ 
+ #include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
+ #include <sys/file.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
+@@ -69,3 +71,4 @@
+ #include "struct.h"
+ #include "extern.h"
+ #include "tunable.h"
++#include "botsocket.h"
+diff -rupN bsdgames-2.17.orig/atc/log.c bsdgames-2.17/atc/log.c
+--- bsdgames-2.17.orig/atc/log.c	2004-09-08 18:49:06.000000000 +1000
++++ bsdgames-2.17/atc/log.c	2014-10-31 22:08:15.517350519 +1100
+@@ -180,7 +180,7 @@ log_score(list_em)
+ 		}
+ 		strcpy(thisscore.name, pw->pw_name);
+ 		uname(&name);
+-		strlcpy(thisscore.host, name.nodename, sizeof(thisscore.host));
++		strncpy(thisscore.host, name.nodename, sizeof(thisscore.host));
+ 
+ 		cp = strrchr(file, '/');
+ 		if (cp == NULL) {
+diff -rupN bsdgames-2.17.orig/atc/main.c bsdgames-2.17/atc/main.c
+--- bsdgames-2.17.orig/atc/main.c	2003-12-17 13:47:37.000000000 +1100
++++ bsdgames-2.17/atc/main.c	2014-10-31 22:08:15.517350519 +1100
+@@ -74,6 +74,7 @@ main(ac, av)
+ #ifdef BSD
+ 	struct itimerval	itv;
+ #endif
++	bot = 0;
+ 
+ 	/* Open the score file then revoke setgid privileges */
+ 	open_score_file();
+@@ -81,7 +82,7 @@ main(ac, av)
+ 
+ 	start_time = seed = time(NULL);
+ 
+-	while ((ch = getopt(ac, av, "ulstpg:f:r:")) != -1) {
++	while ((ch = getopt(ac, av, "ulstpg:f:r:b")) != -1) {
+ 		switch (ch) {
+ 		case '?':
+ 		case 'u':
+@@ -105,6 +106,9 @@ main(ac, av)
+ 		case 'g':
+ 			file = optarg;
+ 			break;
++		case 'b':
++			bot=1;
++			break;
+ 		}
+ 	}
+ 	if (optind < ac)
+@@ -113,7 +117,7 @@ main(ac, av)
+ 
+ 	if (f_usage)
+ 		fprintf(stderr, 
+-		    "Usage: %s -[u?lstp] [-[gf] game_name] [-r random seed]\n",
++		    "Usage: %s -[u?lstpb] [-[gf] game_name] [-r random seed]\n",
+ 			av[0]);
+ 	if (f_showscore)
+ 		log_score(1);
+@@ -138,6 +142,9 @@ main(ac, av)
+ 	if (file == NULL || read_file(file) < 0)
+ 		exit(1);
+ 
++	if (bot)
++		bot_setup();
++
+ 	init_gr();
+ 	setup_screen(sp);
+ 
+diff -rupN bsdgames-2.17.orig/atc/Makefile bsdgames-2.17/atc/Makefile
+--- bsdgames-2.17.orig/atc/Makefile	1970-01-01 10:00:00.000000000 +1000
++++ bsdgames-2.17/atc/Makefile	2014-10-31 22:08:15.517350519 +1100
+@@ -0,0 +1,35 @@
++# Makefile for atc
++
++YACC=bison -y
++LEX=flex
++
++#include  extern.d grammar.d graphics.d input.d lex.d list.d log.d main.d tunable.d update.d
++
++atc_CLEANFILES := grammar.c grammar.h y.tab.* lex.c lex.yy.c
++atc_DEFS := -DBSD -DYY_NO_UNPUT
++atc_DIRS := $(GAMESDIR) $(MAN6DIR)
++
++CFLAGS=-ggdb $(atc_DEFS) -D'__RCSID(x)=static char sccsid[] = x;' -D'__COPYRIGHT(x)=static char *dummy_tm = x;'
++LDFLAGS=-lm -lncurses -lfl
++
++all:	atc #atc.6
++
++atc: extern.o botsocket.o graphics.o input.o list.o log.o tunable.o update.o grammar.o lex.o main.o 
++	gcc -o $@ *.o $(LDFLAGS)
++
++grammar.c:	grammar.y
++	$(YACC) -d grammar.y
++	mv y.tab.c $@
++	mv y.tab.h grammar.h
++	touch grammar.h
++
++grammar.h:	grammar.c
++
++lex.d:	grammar.h
++
++lex.c:	lex.l
++	$(LEX) lex.l
++	mv lex.yy.c $@
++
++clean:
++	rm -f *.o $(atc_CLEANFILES) atc
+diff -rupN bsdgames-2.17.orig/atc/pathnames.h bsdgames-2.17/atc/pathnames.h
+--- bsdgames-2.17.orig/atc/pathnames.h	1970-01-01 10:00:00.000000000 +1000
++++ bsdgames-2.17/atc/pathnames.h	2014-10-31 22:08:15.517350519 +1100
+@@ -0,0 +1,38 @@
++/* Automatically generated from atc/pathnames.h.in.  Do not edit.  */
++/*	$NetBSD: pathnames.h,v 1.4 2003/08/07 09:36:54 agc Exp $	*/
++
++/*-
++ * Copyright (c) 1990, 1993
++ *	The Regents of the University of California.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)pathnames.h	8.1 (Berkeley) 5/31/93
++ */
++
++#include <paths.h>
++
++#define	_PATH_GAMES	"/usr/share/games/bsdgames/atc/"
++#define	_PATH_SCORE	"/var/games/bsdgames/atc_score"
+diff -rupN bsdgames-2.17.orig/atc/update.c bsdgames-2.17/atc/update.c
+--- bsdgames-2.17.orig/atc/update.c	2014-08-02 08:05:17.000000000 +1000
++++ bsdgames-2.17/atc/update.c	2014-10-31 22:08:15.521350519 +1100
+@@ -51,6 +51,7 @@ __RCSID("$NetBSD: update.c,v 1.12 2003/0
+ #endif /* not lint */
+ 
+ #include "include.h"
++#include "botsocket.h"
+ 
+ void
+ update(dummy)
+@@ -216,6 +217,8 @@ update(dummy)
+ #ifdef SYSV
+ 	alarm(sp->update_secs);
+ #endif
++
++	bot_send_update();
+ }
+ 
+ const char *
