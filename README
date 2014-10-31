@@ -1,0 +1,10 @@
+How to compile:
+
+1. patch bsdgames-2.17 sources with bsdgames-2.17.patch
+2. use Makefile in atc subfolder created by the patch
+
+
+How to run:
+
+1. run atc binary with -b parameter to enable bot interface (TCP)
+2. in a separate terminal run: cd birthplan; python bot.py
